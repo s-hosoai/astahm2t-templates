@@ -2,14 +2,31 @@
 #!/usr/bin/python
 from create2.create2 import Create2
 import time
+import paho.mqtt.client as mqtt
+import Controller
+
+host = "192.168.13.2"
+port = 1883
+topic = "/course/corner"
+client = None
 <% for(c in getClasses()){ %>\
 import ${c.name}
 <%}%>\
 
 create = Create2(threading=True)
+client = None
 <% for(c in getClasses()){ %>\
 ${u.getInstanceName(c)} = None
 <%}%>\
+
+def on_connect(client, userdata, flags, respons_code):
+    print "onconnect: "
+    client.subscribe(topic)
+
+def on_message(client, userdata, msg):
+    message = str(msg.payload)
+    print "message arrive : "+message
+    event_handler([message])
 
 def event_handler(events):
     for e in events:
@@ -17,9 +34,18 @@ def event_handler(events):
         ${u.getInstanceName(c)}.doTransition(e)
 <%}%>\
 
+def init_mqtt():
+    client = mqtt.Client(protocol=mqtt.MQTTv311)
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect(host, port, 60)
+    client.loop_forever()
+
 if __name__ == '__main__':
-    controller = Controller.Controller()
-    time.sleep(1)
+<% for(c in getClasses()){ %>\
+    ${u.getInstanceName(c)} = ${c.name}.${c.name}()
+<%}%>\
     create.add_event_listener(event_handler)
+    init_mqtt()
     while True:
         time.sleep(1)
