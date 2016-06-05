@@ -1,0 +1,49 @@
+<% import com.change_vision.jude.api.inf.model.* %>\
+<% import java.util.regex.Matcher %>\
+<% def stateInstance = u.instanceName+"_state"%>\
+<% def eventInstance = u.instanceName+"_event"%>\
+<% def getEventName(event){u.name+"_"}%>\
+<% def isEmpty(str){str!=null&&str.trim().size()>1\
+    ?"("+str.trim().split("\n").join(", ")+")"\
+    :"True"}%>\
+<% def replaceAct(act){
+    if(act=~"setNextTimeout\\((\\d+)(,.+)?\\)"){
+        "timer->setNextTimeout("+Matcher.getLastMatcher().group(1)+","+u.name+"_Timeout)"
+    }else{act.trim();}}%>\
+from create2.sensor import Event
+from main import create
+from create2.create2 import Create2
+
+class ${u.name} :
+    def __init__(self):
+        self.stateMap = {
+<%for(state in u.states){%>\
+            "${state.name}":{
+                "entry": lambda : ${isEmpty(state.entry)},
+                "do"   : lambda : ${isEmpty(state.doActivity)},
+                "exit" : lambda : ${isEmpty(state.exit)},
+<%for(t in state.outgoings){%>\
+                ${t.event.trim()} : {
+                    "guard": lambda : ${isEmpty(t.guard)==""?"True":isEmpty(t.guard)},
+                    "act"  : lambda : ${isEmpty(t.action)},
+                    "next" : "${t.target.name}"
+                },
+<%}%>\
+            },
+<%}%>\
+        }
+        self.current = self.stateMap["${u.initialState}"]
+        self.current["entry"]()
+        self.current["do"]()
+
+    def doTransition(self, event):
+        state = self.current
+        if event in state:
+            trans = state[event]
+            if trans["guard"]():
+                state["exit"]()
+                trans["act"]()
+                state = self.stateMap[trans["next"]]
+                state["entry"]()
+                state["do"]()
+                self.current = state

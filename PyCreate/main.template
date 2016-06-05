@@ -1,0 +1,25 @@
+<%def getClasses(){return u.classes.findAll{it.stereotypes.length==0}}%>
+#!/usr/bin/python
+from create2.create2 import Create2
+import time
+<% for(c in getClasses()){ %>\
+import ${c.name}
+<%}%>\
+
+create = Create2(threading=True)
+<% for(c in getClasses()){ %>\
+${u.getInstanceName(c)} = None
+<%}%>\
+
+def event_handler(events):
+    for e in events:
+<% for(c in getClasses()){ %>\
+        ${u.getInstanceName(c)}.doTransition(e)
+<%}%>\
+
+if __name__ == '__main__':
+    controller = Controller.Controller()
+    time.sleep(1)
+    create.add_event_listener(event_handler)
+    while True:
+        time.sleep(1)
